@@ -1,7 +1,15 @@
-Trabajo Práctio IA 2024
+# Trabajo Práctio IA 2024
+
+## Detector de estrés.
+
+El conjunto de datos que utilizamos para este proyecto contiene datos publicados en subreddits relacionados con la salud mental. Este conjunto de datos contiene varios problemas de salud mental que las personas compartieron sobre su vida. Afortunadamente, este conjunto de datos está etiquetado como 0 y 1, donde 0 indica que no hay estrés y 1 indica estrés.
+
+A continuacion realizaremos el analisis de los datos junto a su modelo de deteccion de estrés.
 
 
-#Importamos las librerias que vamos a necesitar y el dataset.
+
+
+#Importamos las librerias que vamos a necesitar.
 import pandas as pd
 import numpy as np
 import io
@@ -13,163 +21,142 @@ from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import BernoulliNB
+import warnings
+warnings.filterwarnings('ignore')
 
 #Seleccionamos el dataset.
 from google.colab import files
 uploaded = files.upload()
 
 #Vemos las primeras 5 filas.
-datost = pd.read_csv(io.BytesIO(uploaded['Dataset.txt']))
+datost = pd.read_csv(io.BytesIO(uploaded['stress.csv']))
 datost.head()
 
-#Se observan la cantidad de observaciones y caracteristicas del dataset (filas y columnas).
+#Observamos la cantidad de observaciones y caracteristicas del dataset (filas y columnas).
 datost.shape
 
 #Vemos los nombres de todas las columnas del dataset.
 datost.columns.values
 
-#Eliminamos las columnas que no son necesarias para hacer menos pesado el dataset.
-df = datost.drop(['confidence', 'social_timestamp', 'social_karma', 'syntax_ari',
-       'lex_liwc_WC', 'lex_liwc_Analytic', 'lex_liwc_Clout',
-       'lex_liwc_Authentic', 'lex_liwc_Tone', 'lex_liwc_WPS',
-       'lex_liwc_Sixltr', 'lex_liwc_Dic', 'lex_liwc_function',
-       'lex_liwc_pronoun', 'lex_liwc_ppron', 'lex_liwc_i', 'lex_liwc_we',
-       'lex_liwc_you', 'lex_liwc_shehe', 'lex_liwc_they',
-       'lex_liwc_ipron', 'lex_liwc_article', 'lex_liwc_prep',
-       'lex_liwc_auxverb', 'lex_liwc_adverb', 'lex_liwc_conj',
-       'lex_liwc_negate', 'lex_liwc_verb', 'lex_liwc_adj',
-       'lex_liwc_compare', 'lex_liwc_interrog', 'lex_liwc_number',
-       'lex_liwc_quant', 'lex_liwc_affect', 'lex_liwc_posemo',
-       'lex_liwc_negemo', 'lex_liwc_anx', 'lex_liwc_anger',
-       'lex_liwc_sad', 'lex_liwc_social', 'lex_liwc_family',
-       'lex_liwc_friend', 'lex_liwc_female', 'lex_liwc_male',
-       'lex_liwc_cogproc', 'lex_liwc_insight', 'lex_liwc_cause',
-       'lex_liwc_discrep', 'lex_liwc_tentat', 'lex_liwc_certain',
-       'lex_liwc_differ', 'lex_liwc_percept', 'lex_liwc_see',
-       'lex_liwc_hear', 'lex_liwc_feel', 'lex_liwc_bio', 'lex_liwc_body',
-       'lex_liwc_health', 'lex_liwc_sexual', 'lex_liwc_ingest',
-       'lex_liwc_drives', 'lex_liwc_affiliation', 'lex_liwc_achieve',
-       'lex_liwc_power', 'lex_liwc_reward', 'lex_liwc_risk',
-       'lex_liwc_focuspast', 'lex_liwc_focuspresent',
-       'lex_liwc_focusfuture', 'lex_liwc_relativ', 'lex_liwc_motion',
-       'lex_liwc_space', 'lex_liwc_time', 'lex_liwc_work',
-       'lex_liwc_leisure', 'lex_liwc_home', 'lex_liwc_money',
-       'lex_liwc_relig', 'lex_liwc_death', 'lex_liwc_informal',
-       'lex_liwc_swear', 'lex_liwc_netspeak', 'lex_liwc_assent',
-       'lex_liwc_nonflu', 'lex_liwc_filler', 'lex_liwc_AllPunc',
-       'lex_liwc_Period', 'lex_liwc_Comma', 'lex_liwc_Colon',
-       'lex_liwc_SemiC', 'lex_liwc_QMark', 'lex_liwc_Exclam',
-       'lex_liwc_Dash', 'lex_liwc_Quote', 'lex_liwc_Apostro',
-       'lex_liwc_Parenth', 'lex_liwc_OtherP', 'lex_dal_max_pleasantness',
-       'lex_dal_max_activation', 'lex_dal_max_imagery',
-       'lex_dal_min_pleasantness', 'lex_dal_min_activation',
-       'lex_dal_min_imagery', 'lex_dal_avg_activation',
-       'lex_dal_avg_imagery', 'lex_dal_avg_pleasantness',
-       'social_upvote_ratio', 'social_num_comments', 'syntax_fk_grade',
-       'sentiment'], axis=1)
+#Agregamos la columna 'text_spanish' para utilizarla mas adelante.
+datost.loc[:, 'text_spanish'] = ''
+datost.head()
 
-#Observamos el nuevo dataset.
+#Seleccionamos las columnas con las que vamos a trabajar para hacer menos pesado el dataset y lo mostramos.
+df = datost[['subreddit', 'post_id', 'sentence_range', 'text','id', 'label', 'text_spanish']]
 df.head()
 
-#Se observan la cantidad de observaciones y caracteristicas del nuevo dataset (filas y columnas).
+#Observamos la cantidad de observaciones y caracteristicas del nuevo dataset (filas y columnas).
 df.shape
 
-#Elimino 1000 filas de dataframe debido a que sino no es posible traducirlo para poder utilizarlo en espa;ol
+'''
+Queda solo a modo de comentario ya que lo utilizamos cuando no podiamos traducir todo el texto.
 
+#Elimino 1000 filas de dataframe debido a que sino no es posible traducirlo para poder utilizarlo en espa;ol
 # Seleccionar 1000 filas aleatorias para eliminar
 rows_to_remove = np.random.choice(df.index, size=1000, replace=False)
 
 # Eliminar las filas seleccionadas
 df = df.drop(rows_to_remove).reset_index(drop=True)
-
-#Se observan la cantidad de observaciones y caracteristicas del dataset (filas y columnas).
 df.shape
+df.head(10)
+'''
 
-#Se observan en detalle los datos.
-df.head()
-
-#Instalo googletrans and deep-translator para luego poder realizar la traduccion de los textos.
-!pip install googletrans==4.0.0-rc1
+#Instalamos deep-translator para luego poder realizar la traduccion de los textos.
 !pip install deep-translator
 
-#Traducimos la columna "text" ya que se quiere crear un modelo que analice textos en espa;ol.
+#Traducimos la columna "text" ya que se quiere crear un modelo que analice textos en español.
 
+#Esta es la clase utilizada para traducir textos de un idioma a otro. 
+#En este caso, se usa para traducir de inglés ('en') a español ('es').
 from deep_translator import GoogleTranslator
+
+#Estas herramientas nos permiten ejecutar tareas en paralelo, es decir, 
+#se pueden procesar varios lotes de textos simultáneamente para acelerar el proceso de traducción.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Crear una instancia del traductor
+#Creamos una instancia del traductor.
 translator = GoogleTranslator(source='en', target='es')
 
-# Tamaño del lote
-batch_size = 1838  # Ajusta según sea necesario
+#Define el tamaño de cada lote de textos que se traducirán en una sola operación. 
+#En este caso, 720 textos se procesarán juntos en cada lote.
+batch_size = 720
 
-# Función para traducir un lote de textos
-def translate_batch(texts):
-    translations = []
-    for text in texts:
-        try:
-            translations.append(translator.translate(text))
-        except Exception as e:
-            print(f"Error al traducir el texto: {e}")
-            translations.append(text)  # O puedes devolver un valor por defecto
-    return translations
-
-#Dividir la columna 'text' en lotes y traducir
+#Dividimos la columna 'text' en lotes y traducimos en paralelo.
+#Contiene los textos que se van a traducir. 
 texts = df['text']
-translated_texts = []
 
+#Creamos una lista del mismo tamaño que texts pero llena de None. 
+#Esta lista almacenará los textos traducidos.
+translated_texts = [None] * len(texts)
+
+#Función principal
 def translate_in_parallel(texts, batch_size):
     futures = []
-    with ThreadPoolExecutor(max_workers=30) as executor:  #Ajusta el número de trabajadores según sea necesario
+    indices = []
+    #Crea un grupo de 30 hilos de trabajo (threads), que pueden ejecutar tareas en paralelo.
+    with ThreadPoolExecutor(max_workers=30) as executor:
+        #Recorre los textos en lotes, cada uno con el tamaño definido por batch_size.
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
-            futures.append(executor.submit(translate_batch, batch))
-        for future in as_completed(futures):
-            translated_texts.extend(future.result())
+            #'executor.submit' envía la tarea de traducir el lote al grupo de hilos. 
+            #Cada tarea es el resultado de una función lambda que traduce cada texto en el lote.
+            #La variable 'future' es una lista de objetos futuros, que representan las tareas en progreso.
+            future = executor.submit(lambda b: [translator.translate(text) for text in b], batch)
+            futures.append(future)
+            #Una lista que guarda el índice de inicio de cada lote para saber dónde 
+            #colocar los textos traducidos en la lista final.
+            indices.append(i)
+    #Recorre las tareas en paralelo, recuperando el resultado de cada una y su índice correspondiente.
+    for future, index in zip(futures, indices):
+        result = future.result()
+        #Coloca los textos traducidos en la posición correcta dentro de translated_texts.
+        translated_texts[index:index + len(result)] = result
 
 translate_in_parallel(texts, batch_size)
 
-#Asignar las traducciones al DataFrame
-df['text'] = translated_texts
+#Creamos una nueva columna en el DataFrame para almacenar los textos traducidos al español.
+df['text_spanish'] = translated_texts
+
+
+#Guardamos una copia de dataframe por si luego tarda mucho la traduccion.
+df.to_csv('stress_spanish.csv', index=False)
 
 #Vemos los textos traducidos.
-df['text'].head()
+df.head(10)
 
 #Nos fijamos si hay nulos en el dataset.
 print(df.isnull().sum())
 
-#Ahora limpiamos la columna de texto de palabras vacias, enlaces, simbolos especiales y errores del idioma.
+#Limpiamos la columna de texto de palabras vacias, enlaces, simbolos especiales y errores del idioma.
 from nltk.corpus import stopwords
 
-# Descargar las stopwords de NLTK (si no lo has hecho ya)
+#Descargamos las stopwords de NLTK.
 nltk.download('stopwords')
 
-# Definir el stemmer y las stopwords
-stemmer = nltk.SnowballStemmer("spanish")
+#Definimos las stopwords
 stopword = set(stopwords.words('spanish'))
 
-# Definir la función de limpieza
+#Definimos la función de limpieza.
 def clean(text):
     text = str(text).lower()
-    text = re.sub(r'\[.*?\]', '', text)  # Eliminar texto entre corchetes
-    text = re.sub(r'https?://\S+|www\.\S+', '', text)  # Eliminar URLs
-    text = re.sub(r'<.*?>+', '', text)  # Eliminar etiquetas HTML
-    text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)  # Eliminar puntuación
-    text = re.sub(r'\n', '', text)  # Eliminar saltos de línea
-    text = re.sub(r'\w*\d\w*', '', text)  # Eliminar palabras que contienen números
-    text = [word for word in text.split(' ') if word not in stopword]  # Eliminar stopwords
-    text = " ".join(text)
-    text = [stemmer.stem(word) for word in text.split(' ')]  # Aplicar stemming
+    text = re.sub(r'\[.*?\]', '', text)  #Eliminamos texto entre corchetes.
+    text = re.sub(r'https?://\S+|www\.\S+', '', text)  #Eliminamos URLs.
+    text = re.sub(r'<.*?>+', '', text)  #Eliminamos etiquetas HTML.
+    text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)  #Eliminamos puntuación.
+    text = re.sub(r'\n', '', text)  #Eliminamos saltos de línea.
+    text = re.sub(r'\w*\d\w*', '', text)  #Eliminamos palabras que contienen números.
+    text = [word for word in text.split(' ') if word not in stopword]  # Eliminar stopwords.
     text = " ".join(text)
     return text
 
-# Aplicar la función de limpieza a la columna 'text'
-df["text"] = df["text"].apply(clean)
+#Aplicamos la función de limpieza a la columna 'text'.
+df["text_spanish"] = df["text_spanish"].apply(clean)
 
-#Ahora analizaremos las palabras mas mas utilizadas por
-#las personas que comparten los problemas diarios de sus vidas en las redes sociales
+#Analizamos las palabras mas utilizadas por
+#las personas que comparten los problemas diarios de sus vidas en las redes sociales.
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
-text = " ".join(i for i in df.text)
+text = " ".join(i for i in df.text_spanish)
 stopwords = set(STOPWORDS)
 wordcloud = WordCloud(stopwords=stopwords,
                       background_color="white").generate(text)
@@ -177,6 +164,17 @@ plt.figure( figsize=(15,10))
 plt.imshow(wordcloud, interpolation='bilinear')
 plt.axis("off")
 plt.show()
+
+#Conteo de stress.
+label_count = df.label.value_counts()
+
+#Definimos los colores para cada label.
+#0 significa que no hay estrés y 1 significa que hay estrés.
+color_dict = {1:'red', 0:'green'}
+colors = [color_dict[label] for label in label_count.index]
+
+#Generamos el grafico de conteo de cantidad de registros con y sin estrés.
+label_count.plot(kind='bar', title = 'Cantidad de registros con y sin estrés', color=colors, xlabel='Estrés', ylabel='Cantidad')
 
 #MODELO DE DETECCION DE ESTRES
 
@@ -186,32 +184,35 @@ plt.show()
 #Prepararemos esta columna en consecuencia y seleccionaremos las columnas de texto y etiqueta
 #para el proceso de entrenamiento de un modelo de aprendizaje automático.
 df["label"] = df["label"].map({0: "No hay estrés", 1: "Hay estrés"})
-data = df[["text", "label"]]
+data = df[["text_spanish", "label"]]
+
+#Observamos los cambios.
 data.head()
 
-#Ahora dividiremos el dataset en training y test sets.
+#Dividimos el dataset en training y test sets.
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 
-x = np.array(df["text"])
+x = np.array(df["text_spanish"])
 y = np.array(df["label"])
 
 cv = CountVectorizer()
 X = cv.fit_transform(x)
-xtrain, xtest, ytrain, ytest = train_test_split(X, y,
-                                                test_size=0.33,
-                                                random_state=42)
+xtrain, xtest, ytrain, ytest = train_test_split(X, y, test_size=0.2, random_state=67)
 
- #Entrenaremos el modelo de detección de estrés.
+#Entrenamos el modelo de detección de estrés.
 from sklearn.naive_bayes import BernoulliNB
 model = BernoulliNB()
 model.fit(xtrain, ytrain)
 
+#score del modelo
+print(model.score(xtest, ytest))
+
 #Ahora probamos el rendimiento de nuestro modelo en algunas oraciones
 #aleatorias basadas en la salud mental.
 
-#Prueba para "Hay estres" : A veces siento que necesito ayuda.
-#Prueba para "No hay estres" : La gente necesita cuidar su salud mental.
+#Pruebas para "Hay estres" : A veces siento que necesito ayuda, Tengo muchas cosas para hacer, me trataron mal hoy en el trabajo, me despidieron.
+#Prueba para "No hay estres" : La gente necesita cuidar su salud mental,
 
 user = input("Enter a Text: ")
 data = cv.transform([user]).toarray()
